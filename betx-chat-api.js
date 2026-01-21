@@ -58,8 +58,19 @@ app.post('/api/v1/chat/send', async (req, res) => {
         
         console.log('📨 收到消息:', userId, message);
         
+        // ✅ 新增：推送用户消息到客服后台
+        await pusher.trigger('agent-notifications', 'new-user-message', {
+            userId: userId,
+            message: message,
+            timestamp: new Date().toISOString()
+        });
+        
+        console.log('✅ 已通知客服后台');
+        
+        // 生成AI回复
         const reply = getAIReply(message);
         
+        // 推送AI回复给用户
         await pusher.trigger('chat-' + userId, 'new-message', {
             content: reply,
             timestamp: new Date().toISOString(),
@@ -81,6 +92,9 @@ app.post('/api/v1/agent/send', async (req, res) => {
     try {
         const { userId, message, agentName } = req.body;
         
+        console.log('👤 客服发送消息:', userId, message);
+        
+        // 推送给用户
         await pusher.trigger('chat-' + userId, 'new-message', {
             content: message,
             timestamp: new Date().toISOString(),
@@ -88,9 +102,12 @@ app.post('/api/v1/agent/send', async (req, res) => {
             agentName: agentName || '客服小美'
         });
         
+        console.log('✅ 客服消息已推送');
+        
         res.json({ success: true });
         
     } catch (error) {
+        console.error('❌ 客服发送错误:', error);
         res.status(500).json({ error: '发送失败' });
     }
 });
